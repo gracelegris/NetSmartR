@@ -1,0 +1,20 @@
+Package: NetSmartR
+Type: Package
+Title: Reprioritization of ITN Distribution for Nigerian States
+Version: 0.1.0
+Author: Grace Legris
+Maintainer: Grace Legris <gracebea@gmail.com>
+Description: This R package streamlines the analysis and mapping of ward-level reprioritization scenarios 
+    for bed net distribution across Nigerian states. It includes tools for processing shapefiles, extracting 
+    and visualizing environmental and demographic data, classifying settlements, analyzing malaria prevalence, 
+    and generating reprioritization maps. Designed to support the National Malaria Elimination Programme (NMEP), 
+    the package enables flexible, data-driven decision-making for optimizing malaria intervention strategies.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 4.0.0)
+Imports:
+    sf (>= 1.0),
+    dplyr (>= 1.0),
+    ggplot2,
+    ggrepel
