@@ -17,4 +17,5 @@ Imports:
     sf (>= 1.0),
     dplyr (>= 1.0),
     ggplot2,
-    ggrepel
+    ggrepel,
+    googledrive
