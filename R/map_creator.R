@@ -2,7 +2,7 @@
 ## Script Name: Map Creator
 # Author: Grace Legris, Research Data Analyst
 # Date: 01/10/25
-# To do: Generate a function that plots a map of the user-specified state, ward, or LGA. Function reads in a shapefile from a Google Drive
+# Purpose: Plots a map of the user-specified state, ward, or LGA. Function reads in a shapefile from a Google Drive
 # link, which contains boundaries for states, wards, and LGAs.
 # ==========================================================================================================================================
 
