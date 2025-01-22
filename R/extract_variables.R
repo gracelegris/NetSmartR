@@ -162,7 +162,7 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # FLOOD
-    if(!is.null(paths$floor_path)) {
+    if(!is.null(paths$flood_path)) {
       message("Extracting Floods for ", state_name)
       flood_2023_files <- list.files(paths$flood_path, pattern = ".tif", full.names = TRUE)
       if (length(flood_2023_files) == 0) stop("No Flood files found.")
@@ -196,7 +196,7 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # NORMALIZED DIFFERENCE MOISTURE INDEX
-    if(!is.null(paths$ndMI_path)) {
+    if(!is.null(paths$ndmi_path)) {
       message("Extracting NDMI for ", state_name)
       ndmi_raster <- tryCatch({
         raster(paths$ndmi_path)

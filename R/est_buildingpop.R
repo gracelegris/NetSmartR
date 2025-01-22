@@ -1,17 +1,55 @@
 # ==========================================================================================================================================
 ## Script Name: Estimate Buildings and Population
 # Author: Grace Legris, Research Data Analyst
-# Date: 01/21/25
+# Date: 01/22/25
 # Purpose: Calculates counts of residential buildings within a given shapefile and population estimates based on user-specified household sizes.
 # ==========================================================================================================================================
 
+theme_manuscript <- function(){
+  theme_bw() +
+    theme(panel.border = element_rect(colour = "black", fill=NA, size=0.5),
+          plot.title = element_text(hjust = 0.5),
+          axis.text.x = element_text(size = 12, color = "black"),
+          axis.text.y = element_text(size = 12, color = "black"),
+          axis.title.x = element_text(size = 12),
+          axis.title.y = element_text(size =12),
+          legend.title=element_text(size=12, colour = 'black'),
+          legend.text =element_text(size = 12, colour = 'black'),
+          legend.key.height = unit(1, "cm"))
+}
+
 est_buildingpop <- function(building_data_path, settlement_data_path, shapefile_path, household_size, state, landuse_filter) {
 
-  # read in and process settlement blocks (residential areas)
-  settlement_blocks <- st_read(settlement_data_path) %>%
-    filter(state == state, landuse == landuse_filter) %>%
-    st_transform(crs = 4326) %>%
+  # read in settlement blocks data
+  settlement_blocks <- st_read(settlement_data_path)
+
+  # get unique land use filters
+  landuse_filters <- unique(settlement_blocks$landuse)
+
+  # check that user specified a land use filter
+  if (is.null(landuse_filter) || landuse_filter == "") {
+    stop(paste0(
+      "ERROR: Please specify a land use filter from the following list: ",
+      paste(landuse_filters, collapse = ", ")
+    ))
+  }
+
+  # ensure all geometries are valid
+  settlement_blocks <- settlement_blocks %>%
     st_make_valid()
+
+  # identify and handle invalid geometries (if any remain)
+  invalid_geometries <- settlement_blocks[!st_is_valid(settlement_blocks), ]
+
+  if (nrow(invalid_geometries) > 0) {
+    warning(paste(nrow(invalid_geometries), "invalid geometries detected. Removing them."))
+    settlement_blocks <- settlement_blocks[st_is_valid(settlement_blocks), ]
+  }
+
+  # filter and transform settlement blocks for the specified state and land use
+  settlement_blocks <- settlement_blocks %>%
+    dplyr::filter(state == state, landuse == landuse_filter) %>%
+    st_transform(crs = 4326)
 
   # read in shapefile
   study_area_shp <- st_read(shapefile_path) %>%
@@ -51,6 +89,10 @@ est_buildingpop <- function(building_data_path, settlement_data_path, shapefile_
     labs(title = "Residential Building Counts by Ward",
          x = "Ward Name", y = "Residential Buildings") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  message("Total building counts in ", state, ":")
+  print(kable(building_counts, format = "simple"))
+  message("Total population in ", state, ": ", total_population)
 
   # return processed data and total population
   return(list(
