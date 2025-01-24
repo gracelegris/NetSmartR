@@ -5,31 +5,88 @@
 # Purpose: Calculates number of households per building and population estimates based on building height.
 # ==========================================================================================================================================
 
-est_buildingheightpop <- function(building_data_path, settlement_data_path, ward_shapefile_path, height_raster_path, output_csv_path, urban_wards,
+est_buildingheightpop <- function(building_data_path, settlement_data_path, ward_shapefile_path, height_raster_path, output_dir, urban_wards,
                                   part_urban_wards, low_risk_wards, ward, state) {
+
+  ## -----------------------------------------------------------------------------------------------------------------------------------------
+  ### Read in Data
+  ## -----------------------------------------------------------------------------------------------------------------------------------------
 
   # read in settlement blocks, building data, and ward shapefile and transform to same crs
   message("Loading settlement blocks for ", ward, ", ", state)
+  # read in settlement blocks data
   settlement_blocks <- st_read(settlement_data_path) %>%
-    st_transform(crs = 4326) %>%
-    st_make_valid(settlement_blocks)
+    filter(state == state, landuse == 'Residential')
+
+  # ensure all geometries are valid
+  settlement_blocks <- st_transform(settlement_blocks, crs = 4326)
+  settlement_blocks <- st_make_valid(settlement_blocks)
+
+  # # identify and handle invalid geometries (if any remain)
+  # invalid_geometries <- settlement_blocks[!st_is_valid(settlement_blocks), ]
+  #
+  # if (nrow(invalid_geometries) > 0) {
+  #   warning(paste(nrow(invalid_geometries), "invalid geometries detected. Removing them."))
+  #   settlement_blocks <- settlement_blocks[st_is_valid(settlement_blocks), ]
+  # }
+
   message("Loading building footprints for ", ward, ", ", state)
   building_data <- st_read(building_data_path)  %>%
-    st_transform(crs = 4326) %>%
-    st_make_valid(settlement_blocks)
+    st_transform(crs = 4326)
+
   message("Loading shapefile for ", ward, ", ", state)
   ward_shp <- st_read(ward_shapefile_path)  %>%
-    st_transform(crs = 4326) %>%
-    st_make_valid(settlement_blocks)
-
-  # read in building height raster data
-  message("Loading building height raster for ", ward, ", ", state)
-  building_heights <- raster(height_raster_path)
+    st_transform(crs = 4326)
 
   # filter residential buildings
   residential_buildings <- st_join(building_data, settlement_blocks, join = st_within) %>%
     filter(landuse == "Residential") %>%
     filter(st_geometry_type(.) == "POLYGON")
+
+  ## -----------------------------------------------------------------------------------------------------------------------------------------
+  ### Read in raster building height data, process, and save as .csv for future use
+  ## -----------------------------------------------------------------------------------------------------------------------------------------
+
+  message("Loading building height raster for ", ward, ", ", state)
+  height_raster <- raster(height_raster_path)
+
+  # extract mean building height in specified ward
+  mean_building_height <- raster::extract(height_raster, ward_shp, fun = mean, df = T)
+
+  # extract individual building heights
+  individual_heights <- exactextractr::exact_extract(height_raster, residential_buildings)
+
+  # calculate mean building height
+  mean_height <- lapply(individual_heights, function(df) {
+    mean(df$value, na.rm = TRUE)
+  })
+
+  mean_height_df <- data.frame(mean_height = unlist(mean_height))
+
+  # add mean heights to a new var in residential buildings df
+  residential_buildings$building_height <- mean_height_df$mean_height
+
+  height_summary <- residential_buildings %>%
+    dplyr::select(id, FID, WardName, building_height) %>%
+    st_drop_geometry()
+
+  write.csv(height_summary, file.path(output_dir, paste0(ward, "_buildings.csv")))
+
+  ## -----------------------------------------------------------------------------------------------------------------------------------------
+  ### Read in saved building height .csv
+  ## -----------------------------------------------------------------------------------------------------------------------------------------
+  building_heights <- read.csv(file.path(output_dir, paste0(ward, "_buildings.csv")))
+
+  # convert height to likely household number per building
+  building_story_count <- building_heights %>%
+    filter(building_heights >= 1.8) %>%  # remove uninhabitable buildings less than one story (8015)
+    filter(building_heights <= 14) %>%  # with average story height of 3.5m, remove buildings > 16m (3) or > 14m / 4 stories (7)
+    mutate(resident_households = case_when(
+      building_heights >= 1.8 & building_heights < 3.5 ~ 1,
+      building_heights >= 3.5 & building_heights < 7.0 ~ 1.5,
+      building_heights >= 7.0 & building_heights < 10.5 ~ 2,
+      building_heights >= 10.5 & building_heights < 14.0 ~ 2.5,
+    ))
 
   # extract mean building heights
   building_heights <- exactextractr::exact_extract(building_heights, residential_buildings)
@@ -44,7 +101,7 @@ est_buildingheightpop <- function(building_data_path, settlement_data_path, ward
     "10.5-14.0" = 2.5
   )
 
-  # filter and calculate resident households
+  # filter and calculate the estimated number of resident households based on building height
   filtered_buildings <- residential_buildings %>%
     filter(building_height >= 1.8, building_height <= 14.0) %>%
     mutate(resident_households = case_when(
@@ -54,9 +111,9 @@ est_buildingheightpop <- function(building_data_path, settlement_data_path, ward
       building_height >= 10.5 & building_height < 14.0 ~ household_sizes[["10.5-14.0"]]
     ))
 
-  # summarize households by ward
+  # summarize households counts
   household_counts <- filtered_buildings %>%
-    group_by(WardName) %>%
+    #group_by(WardName) %>%
     summarise(total_households = sum(resident_households, na.rm = TRUE)) %>%
     mutate(total_households = ceiling(total_households))
 
@@ -89,8 +146,8 @@ est_buildingheightpop <- function(building_data_path, settlement_data_path, ward
            label = paste0(Population, " - ", round(percentage, 2), "%"))
 
   # save summary to csv
-  message("Saving summary .csv file to: ", output_csv_path)
-  write.csv(filtered_buildings, output_csv_path, row.names = FALSE)
+  message("Saving summary .csv file to: ", output_dir)
+  write.csv(filtered_buildings, output_dir, row.names = FALSE)
 
   # create bar plot
   population_plot <- ggplot(population_data, aes(x = EstimateType, y = Population, fill = WardGroup)) +
