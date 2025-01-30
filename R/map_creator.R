@@ -23,27 +23,27 @@ map_theme <- function(){
         legend.key.height = unit(0.65, "cm"))
 }
 
-# function to match state code to state name
-get_state_name <- function(state_code) {
-  state_code_to_name <- c(
-    "AB" = "Abia", "AD" = "Adamawa", "AK" = "Akwa Ibom", "AN" = "Anambra", "BA" = "Bauchi", "BY" = "Bayelsa", "BE" = "Benue",
-    "BR" = "Borno", "CR" = "Cross River", "DE" = "Delta", "EB" = "Ebonyi", "ED" = "Edo", "EK" = "Ekiti", "EN" = "Enugu", "GO" = "Gombe",
-    "IM" = "Imo", "JI" = "Jigawa", "KD" = "Kaduna", "KN" = "Kano", "KT" = "Katsina", "KB" = "Kebbi", "KO" = "Kogi", "KW" = "Kwara",
-    "LA" = "Lagos", "NA" = "Nasarawa", "NI" = "Niger", "OG" = "Ogun", "ON" = "Ondo", "OS" = "Osun", "OY" = "Oyo", "PL" = "Plateau",
-    "RI" = "Rivers", "SO" = "Sokoto", "TA" = "Taraba", "YO" = "Yobe", "ZA" = "Zamfara", "FC" = "Federal Capital Territory"
-  )
-  if (state_code %in% names(state_code_to_name)) {
-    return(state_code_to_name[state_code])
-  } else {
-    stop("ERROR: Invalid state code. Please check the input.")
-  }
-}
+# # function to match state code to state name
+# get_state_name <- function(state_code) {
+#   state_code_to_name <- c(
+#     "AB" = "Abia", "AD" = "Adamawa", "AK" = "Akwa Ibom", "AN" = "Anambra", "BA" = "Bauchi", "BY" = "Bayelsa", "BE" = "Benue",
+#     "BR" = "Borno", "CR" = "Cross River", "DE" = "Delta", "EB" = "Ebonyi", "ED" = "Edo", "EK" = "Ekiti", "EN" = "Enugu", "GO" = "Gombe",
+#     "IM" = "Imo", "JI" = "Jigawa", "KD" = "Kaduna", "KN" = "Kano", "KT" = "Katsina", "KB" = "Kebbi", "KO" = "Kogi", "KW" = "Kwara",
+#     "LA" = "Lagos", "NA" = "Nasarawa", "NI" = "Niger", "OG" = "Ogun", "ON" = "Ondo", "OS" = "Osun", "OY" = "Oyo", "PL" = "Plateau",
+#     "RI" = "Rivers", "SO" = "Sokoto", "TA" = "Taraba", "YO" = "Yobe", "ZA" = "Zamfara", "FC" = "Federal Capital Territory"
+#   )
+#   if (state_code %in% names(state_code_to_name)) {
+#     return(state_code_to_name[state_code])
+#   } else {
+#     stop("ERROR: Invalid state code. Please check the input.")
+#   }
+# }
 
 # ==========================================================================================================================================
 ## Function to load the shapefile and plot the map for a specified state, ward, or LGA (using name or code)
 # ==========================================================================================================================================
 
-generate_map <- function(area_name = NULL, state_code = NULL, state_name = NULL, ward_codes = NULL, ward_names = NULL, lga_codes = NULL, lga_names = NULL, output_dir) {
+generate_map <- function(map_name = NULL, state_code = NULL, state_name = NULL, ward_codes = NULL, ward_names = NULL, lga_codes = NULL, lga_names = NULL, output_dir) {
   ## -------------------------------------------------------------------------
   ### Validate inputs
   ## -------------------------------------------------------------------------
@@ -133,13 +133,13 @@ generate_map <- function(area_name = NULL, state_code = NULL, state_name = NULL,
   area_map <- ggplot() +
     geom_sf(data = area_shp, aes(geometry = geometry), fill = "#D1E5F4", color = "black", size = 0.2) +
     labs(
-      title = paste("Map of ", area_name, " ", type, ",", " Nigeria", sep = ""),
+      title = paste("Map of ", map_name, " ", type, ",", " Nigeria", sep = ""),
       x = NULL, y = NULL
     ) +
     map_theme()
 
   # save the plot to the output directory
-  plot_path <- file.path(output_dir, paste0(area_name, "_", type, ".pdf"))
+  plot_path <- file.path(output_dir, paste0(map_name, "_", type, ".pdf"))
   ggplot2::ggsave(filename = plot_path, plot = area_map, width = 8, height = 6)
 
   message("Map saved to: ", plot_path)
