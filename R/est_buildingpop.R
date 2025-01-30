@@ -18,10 +18,41 @@ theme_manuscript <- function(){
           legend.key.height = unit(1, "cm"))
 }
 
-est_buildingpop <- function(building_data_path, settlement_data_path, shapefile_path, household_size, state, landuse_filter) {
+est_buildingpop <- function(building_data_path, settlement_data_path, shapefile_path, household_size, city, state, landuse_filter) {
 
   # read in settlement blocks data
   settlement_blocks <- st_read(settlement_data_path)
+
+  # read in settlement blocks data from Google Drive (not working - says shapefile could be corrupted)
+  # shp_id <- "17UQtuCzDTTFiV69-r8TVmbNAr-5ZXYTm"
+  # dbf_id <- "1PppXg66v020ylIt2X22e_fkRTjUYsZkO"
+  # prj_id <- "1UqnzhS6aHJiKeiUkktXbXsH9tNLi-E_x"
+  # shx_id <- "1sckPapY2hfrlepyIQ2V-szGMdOGi4pvY"
+  #
+  # download_gdrive <- function(file_id, destfile) {
+  #   drive_url <- paste0("https://drive.google.com/uc?export=download&id=", file_id)
+  #   response <- GET(drive_url, write_disk(destfile, overwrite = TRUE))
+  #   if (response$status_code != 200) {
+  #     stop(paste("Failed to download file:", destfile))
+  #   }
+  # }
+  #
+  # # Create a temp directory to store files
+  # temp_dir <- tempfile()
+  # dir.create(temp_dir)
+  #
+  # # Download files
+  # download_gdrive(shp_id, file.path(temp_dir, "data.shp"))
+  # download_gdrive(dbf_id, file.path(temp_dir, "data.dbf"))
+  # download_gdrive(prj_id, file.path(temp_dir, "data.prj"))
+  # download_gdrive(shx_id, file.path(temp_dir, "data.shx"))
+  #
+  # # Read shapefile using sf
+  # shp_path <- file.path(temp_dir, "data.shp")
+  # settlement_blocks <- st_read(shp_path)
+  #
+  # # Print first few rows
+  # print(head(settlement_blocks))
 
   # get unique land use filters
   landuse_filters <- unique(settlement_blocks$landuse)
@@ -83,16 +114,16 @@ est_buildingpop <- function(building_data_path, settlement_data_path, shapefile_
   total_population <- sum(building_counts$population_estimate)
 
   # visualize results
-  ggplot(building_counts, aes(x = WardName, y = residential_buildings)) +
-    geom_bar(stat = "identity", fill = "steelblue") +
-    theme_manuscript() +
-    labs(title = "Residential Building Counts by Ward",
-         x = "Ward Name", y = "Residential Buildings") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  # ggplot(building_counts, aes(x = WardName, y = residential_buildings)) +
+  #   geom_bar(stat = "identity", fill = "steelblue") +
+  #   theme_manuscript() +
+  #   labs(title = "Residential Building Counts by Ward",
+  #        x = "Ward Name", y = "Residential Buildings") +
+  #   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-  message("Total building counts in ", state, ":")
+  message("Total building counts in ", city, ", ", state, ":")
   print(kable(building_counts, format = "simple"))
-  message("Total population in ", state, ": ", total_population)
+  message("Total population in ", city, ", ", state, ": ", total_population)
 
   # return processed data and total population
   return(list(
