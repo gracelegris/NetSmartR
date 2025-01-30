@@ -33,6 +33,6 @@ shapefile_to_wkt <- function(shapefile_path) {
 }
 
 # Example usage:
-# Replace 'your_shapefile_path.shp' with the actual path to your shapefile
+# Replace 'your_shapefile_path.shp' with path to shapefile
 # wkt_result <- transform_shapefile_to_wkt("path/to/your/shapefile.shp")
 # print(wkt_result)
