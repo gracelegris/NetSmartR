@@ -5,61 +5,53 @@
 # Purpose: Creates and saves final reprioritization maps using composite scores.
 # ==========================================================================================================================================
 
-create_reprioritization_map <- function(state_name, shp_dir, outputs_dir, itn_dir, prioritize_wards, map_theme) {
+create_reprioritization_map <- function(state_name, shp_dir, output_dir, itn_dir, prioritized_wards, composite_score_data) {
 
-  library(sf)
-  library(dplyr)
-  library(ggplot2)
-  library(readxl)
-  library(stringr)
+  # load shapefile
+  state_shp <- st_read(shp_dir)
 
-  # Define file paths
-  state_shp_path <- file.path(shp_dir, state_name, paste0(state_name, "_State.shp"))
-  variables_path <- file.path(outputs_dir, "Final Extractions", paste0(tolower(state_name), "_plus.csv"))
-  rankings_path <- file.path(outputs_dir, "rankings", paste0(state_name, "_rankings.csv"))
-  itn_data_path <- file.path(itn_dir, paste0("pbi_distribution_", state_name, ".xlsx"))
+  prioritized_wards <- read.csv(prior_dir)
 
-  # Load shapefile
-  state_shp <- st_read(state_shp_path)
-
-  # Load and clean variables
-  state_variables <- read.csv(variables_path) %>%
+  # load and clean variables - NEED URBAN PERCENTAGE CALCULATION
+  # set two urban/rural classification scenarios based on urban percentages
+  state_variables <- prioritized_wards %>%
     distinct(WardCode, .keep_all = TRUE) %>%
-    dplyr::select(X, WardName, urbanPercentage, WardCode) %>%
+    dplyr::select(WardCode, WardName, urbanPercentage) %>%
     mutate(
       classification_20 = ifelse(urbanPercentage > 20, "Urban", "Rural"),
-      classification_30 = ifelse(urbanPercentage > 30, "Urban", "Rural"),
-      classification_50 = ifelse(urbanPercentage > 50, "Urban", "Rural"),
-      classification_75 = ifelse(urbanPercentage > 75, "Urban", "Rural")
+      classification_30 = ifelse(urbanPercentage > 30, "Urban", "Rural")
     )
 
-  # Read in rankings
-  state_ranks <- read.csv(rankings_path) %>%
-    dplyr::mutate(WardName = str_trim(WardName), ranks = str_trim(ranks))
+  # read and clean ITN data
+  state_itn_data <- read.csv(itn_dir)
 
-  # Read and clean ITN data
-  state_itn_data <- readxl::read_excel(itn_data_path, sheet = 3) %>%
-    rename(population = N_FamilyMembers, Ward = AdminLevel3) %>%
-    dplyr::select(population, Ward) %>%
-    group_by(Ward) %>%
-    summarise(Population = sum(population, na.rm = TRUE))
+  state_itn_data$Ward = state_itn_data$AdminLevel3
 
-  # Merge datasets
-  combined_wards <- left_join(state_variables, state_ranks, by = "WardName")
+  state_itn_data <- state_itn_data %>%
+    dplyr::select(N_FamilyMembers, AdminLevel3) %>%
+    group_by(AdminLevel3) %>%
+    summarise(Population = sum(N_FamilyMembers, na.rm = TRUE))
+
+  # merge composite score data
+  malaria_risk_scores <- malaria_risk_scores %>%
+    dplyr::select(WardName, model_1)  # Choose the desired model (or modify for multiple models) - ADD AS ARGUMENT????
+
+  combined_wards <- left_join(state_variables, malaria_risk_scores, by = "WardName")
   combined_wards2 <- left_join(combined_wards, state_itn_data, by = c("WardName" = "Ward"))
 
-  # Prioritize wards
-  prioritized_wards_20 <- prioritize_wards(combined_wards2, "Population", "ranks", "classification_20", "WardName", 30)
-  prioritized_wards_30 <- prioritize_wards(combined_wards2, "Population", "ranks", "classification_30", "WardName", 30)
+  # prioritize wards using composite scores instead of rankings
+  prioritized_wards_20 <- prioritize_wards(combined_wards2, "Population", "model_1", "classification_20", "WardName", 30)
+  prioritized_wards_30 <- prioritize_wards(combined_wards2, "Population", "model_1", "classification_30", "WardName", 30)
 
-  # Create risk map
+  # create risk map using composite scores
   risk_map <- ggplot() +
-    geom_sf(data = state_shp %>% left_join(combined_wards2, by = "WardName"), aes(geometry = geometry, fill = as.numeric(ranks))) +
+    geom_sf(data = state_shp %>% left_join(combined_wards2, by = "WardName"),
+            aes(geometry = geometry, fill = as.numeric(model_1))) +
     scale_fill_gradient(na.value = "grey") +
     labs(title = paste("Risk Map in", state_name)) +
     map_theme()
 
-  # Create reprioritization map
+  # create reprioritization map
   reprioritization_map <- ggplot() +
     geom_sf(data = state_shp %>% left_join(prioritized_wards_20, by = c("WardName" = "SelectedWards")),
             aes(geometry = geometry, fill = ifelse(is.na(WardPopulation), "Not Reprioritized", "Reprioritized"))) +
@@ -70,8 +62,3 @@ create_reprioritization_map <- function(state_name, shp_dir, outputs_dir, itn_di
 
   return(list(risk_map = risk_map, reprioritization_map = reprioritization_map))
 }
-
-# Example usage:
-maps <- create_reprioritization_map("Delta", StateShpDir, OutputsDir, ITNDir, prioritize_wards, map_theme)
-maps$risk_map  # Display risk map
-maps$reprioritization_map  # Display reprioritization map
