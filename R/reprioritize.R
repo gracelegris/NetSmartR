@@ -54,6 +54,12 @@ prioritize_wards <- function(data, population_col, rank_col, class_col, ward_col
   return(result)
 }
 
+merge <- function(tpr_data_path, extracted_data) {
+  tpr_data <- read.csv(tpr_data_path)
+  extracted_data_plus <- extracted_data %>%
+    left_join(tpr_data %>% dplyr::select(WardName, u5_tpr_rdt), by = "WardName")
+}
+
 create_reprioritization_map <- function(state_name, shp_dir, output_dir, itn_dir, extracted_data_dir, ranked_wards) {
 
   # load shapefile, extracted covariates data, and ranked wards df
@@ -120,7 +126,7 @@ create_reprioritization_map <- function(state_name, shp_dir, output_dir, itn_dir
   risk_map <- ggplot() +
     geom_sf(data = state_shp %>% left_join(combined_wards2, by = "WardName"),
             aes(geometry = geometry, fill = rank)) +
-    scale_fill_gradient(na.value = "grey") +
+    scale_fill_gradient(name = "Rank", na.value = "grey") +
     labs(title = paste("Malaria Risk Map in", state_name, "State")) +
     map_theme()
 
