@@ -27,9 +27,9 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     # check for each path and perform extraction only if the path exists
 
     # EVI
-    if (!is.null(paths$evi_path)) {
+    if (!is.null(raster_paths$evi_path)) {
       message("Extracting EVI for ", state_name)
-      evi_files <- list.files(paths$evi_path, pattern = ".tif", full.names = TRUE)
+      evi_files <- list.files(raster_paths$evi_path, pattern = ".tif", full.names = TRUE)
       if (length(evi_files) == 0) stop("No EVI files found.")
       evi_data <- lapply(evi_files, raster)
       evi_extracted <- purrr::map(evi_data, ~raster::extract(., wards, fun = mean, df = TRUE)) %>%
@@ -39,9 +39,9 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # NDVI
-    if (!is.null(paths$ndvi_path)) {
+    if (!is.null(raster_paths$ndvi_path)) {
       message("Extracting NDVI for ", state_name)
-      ndvi_files <- list.files(paths$ndvi_path, pattern = ".tif", full.names = TRUE)
+      ndvi_files <- list.files(raster_paths$ndvi_path, pattern = ".tif", full.names = TRUE)
       if (length(ndvi_files) == 0) stop("No NDVI files found.")
       ndvi_data <- lapply(ndvi_files, raster)
       ndvi_extracted <- purrr::map(ndvi_data, ~raster::extract(., wards, fun = mean, df = TRUE)) %>%
@@ -51,9 +51,9 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # RAINFALL
-    if (!is.null(paths$rainfall_path)) {
+    if (!is.null(raster_paths$rainfall_path)) {
       message("Extracting Rainfall for ", state_name)
-      rainfall_files <- list.files(paths$rainfall_path, pattern = ".tif", full.names = TRUE)
+      rainfall_files <- list.files(raster_paths$rainfall_path, pattern = ".tif", full.names = TRUE)
       if (length(rainfall_files) == 0) stop("No rainfall files found.")
       rainfall_data <- lapply(rainfall_files, raster)
       rainfall_extracted <- purrr::map(rainfall_data, ~raster::extract(., wards, fun = mean, df = TRUE)) %>%
@@ -63,20 +63,20 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # DISTANCE TO WATER BODIES
-    if (!is.null(paths$h2o_distance_path)) {
+    if (!is.null(raster_paths$h2o_distance_path)) {
       message("Extracting Distance to Water Bodies for ", state_name)
       h2o_distance_raster <- tryCatch({
-        raster(paths$h2o_distance_path)
+        raster(raster_paths$h2o_distance_path)
       }, error = function(e) stop("Failed to load water distance raster: ", e$message))
       distance_extracted <- raster::extract(h2o_distance_raster, wards, fun = mean, df = TRUE)
       wards$distance_to_water <- distance_extracted$distance_to_water
     }
 
     # RELATIVE HUMIDITY
-    if(!is.null(paths$rh_2023) && !is.null(paths$rh_2024)) {
+    if(!is.null(raster_paths$rh_2023) && !is.null(raster_paths$rh_2024)) {
       message("Extracting Relative Humidity for ", state_name)
-      rh_files <- list(rh_23 <- brick(paths$rh_2023),
-                       rh_24 <- brick(paths$rh_2024))
+      rh_files <- list(rh_23 <- brick(raster_paths$rh_2023),
+                       rh_24 <- brick(raster_paths$rh_2024))
       names(rh_files) <- c("2023", "2024")
 
       for (i in 1:length(rh_files)) {
@@ -101,11 +101,11 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # TEMPERATURE
-    if(!is.null(paths$temp_2023) && !is.null(paths$temp_2024)) {
+    if(!is.null(raster_paths$temp_2023) && !is.null(raster_paths$temp_2024)) {
       # Extract temperature
       message("Extracting Temperature for ", state_name)
-      temp_files <- list(temp_23 <- brick(paths$temp_2023),
-                         temp_24 <- brick(paths$temp_2024))
+      temp_files <- list(temp_23 <- brick(raster_paths$temp_2023),
+                         temp_24 <- brick(raster_paths$temp_2024))
       names(temp_files) <- c("2023", "2024")
 
       for (i in 1:length(temp_files)) {
@@ -130,29 +130,29 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # HOUSING QUALITY
-    if(!is.null(paths$housing_quality_path)) {
+    if(!is.null(raster_paths$housing_quality_path)) {
       message("Extracting Housing Quality for ", state_name)
       housing_quality_raster <- tryCatch({
-        raster(paths$housing_quality_path)
+        raster(raster_paths$housing_quality_path)
       }, error = function(e) stop("Failed to load housing quality raster: ", e$message))
       housing_extracted <- raster::extract(housing_quality_raster, wards, fun = mean, df = TRUE)
       wards$housing_quality <- housing_extracted$X2019_Nature_Africa_Housing_2015_NGA
     }
 
     # PFPR
-    if(!is.null(paths$pfpr_path)) {
+    if(!is.null(raster_paths$pfpr_path)) {
       message("Extracting PfPR for ", state_name)
       pfpr_raster <- tryCatch({
-        raster(paths$pfpr_path)
+        raster(raster_paths$pfpr_path)
       }, error = function(e) stop("Failed to load PfPR raster: ", e$message))
       pfpr_extracted <- raster::extract(pfpr_raster, wards, fun = mean, df = TRUE)
       wards$pfpr <- pfpr_extracted$X202406_Global_Pf_Parasite_Rate_NGA_2022_1
     }
 
     # NIGHT-TIME LIGHT
-    if(!is.null(paths$lights_path)) {
+    if(!is.null(raster_paths$lights_path)) {
       message("Extracting Night-Time Light for ", state_name)
-      light_files <- list.files(paths$lights_path, pattern = ".tif", full.names = TRUE)
+      light_files <- list.files(raster_paths$lights_path, pattern = ".tif", full.names = TRUE)
       if (length(light_files) == 0) stop("No night-time light files found.")
       night_light_data <- lapply(light_files, raster)
       night_light_extracted <- purrr::map(night_light_data, ~raster::extract(., wards, fun = mean, df = TRUE)) %>%
@@ -162,9 +162,9 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # FLOOD
-    if(!is.null(paths$flood_path)) {
+    if(!is.null(raster_paths$flood_path)) {
       message("Extracting Floods for ", state_name)
-      flood_2023_files <- list.files(paths$flood_path, pattern = ".tif", full.names = TRUE)
+      flood_2023_files <- list.files(raster_paths$flood_path, pattern = ".tif", full.names = TRUE)
       if (length(flood_2023_files) == 0) stop("No Flood files found.")
       flood_2023_data <- lapply(flood_2023_files, raster)
       #flood_2023_extracted <- purrr::map(flood_2023_data, ~raster::extract(., wards, fun = mean, df = TRUE)) %>%
@@ -186,39 +186,39 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     }
 
     # NORMALIZED DIFFERENCE WATER INDEX
-    if(!is.null(paths$ndwi_path)) {
+    if(!is.null(raster_paths$ndwi_path)) {
       message("Extracting NDWI for ", state_name)
       ndwi_raster <- tryCatch({
-        raster(paths$ndwi_path)
+        raster(raster_paths$ndwi_path)
       }, error = function(e) stop("Failed to load NDWI raster: ", e$message))
       ndwi_extracted <- raster::extract(ndwi_raster, wards, fun = mean, df = TRUE)
       wards$NDWI <- ndwi_extracted$NDWI
     }
 
     # NORMALIZED DIFFERENCE MOISTURE INDEX
-    if(!is.null(paths$ndmi_path)) {
+    if(!is.null(raster_paths$ndmi_path)) {
       message("Extracting NDMI for ", state_name)
       ndmi_raster <- tryCatch({
-        raster(paths$ndmi_path)
+        raster(raster_paths$ndmi_path)
       }, error = function(e) stop("Failed to load NDMI raster: ", e$message))
       ndmi_extracted <- raster::extract(ndmi_raster, wards, fun = mean, df = TRUE)
       wards$NDMI <- ndmi_extracted$NDMI
     }
 
     # ELEVATION
-    if(!is.null(paths$elevation_path)) {
+    if(!is.null(raster_paths$elevation_path)) {
       message("Extracting Elevation for ", state_name)
       elevation_raster <- tryCatch({
-        raster(paths$elevation_path)
+        raster(raster_paths$elevation_path)
       }, error = function(e) stop("Failed to load Elevation raster: ", e$message))
       elevation_extracted <- raster::extract(elevation_raster, wards, fun = mean, df = TRUE)
       wards$elevation <- elevation_extracted$ELE
     }
 
     # SURFACE SOIL WETNESS
-    if(!is.null(paths$surface_soil_wetness_path)) {
+    if(!is.null(raster_paths$surface_soil_wetness_path)) {
       message("Extracting Surface Soil Wetness for ", state_name)
-      soil_h2o_files <- list.files(paths$surface_soil_wetness_path, pattern = ".tif", full.names = TRUE)
+      soil_h2o_files <- list.files(raster_paths$surface_soil_wetness_path, pattern = ".tif", full.names = TRUE)
       if (length(soil_h2o_files) == 0) stop("No Surface Soil Wetness files found.")
       soil_h2o_data <- lapply(soil_h2o_files, raster)
       soil_h2o_extracted <- purrr::map(soil_h2o_data, ~raster::extract(., wards, fun = mean, df = TRUE)) %>%
@@ -230,7 +230,7 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     # Save extracted variables
     message("Saving Extracted Variables for ", state_name)
     output_variables <- st_drop_geometry(wards)
-    output_file <- file.path(paths$output_dir, paste0(state_name, "_wards_variables.csv"))
+    output_file <- file.path(raster_paths$output_dir, paste0(state_name, "_wards_variables.csv"))
     write.csv(output_variables, output_file, row.names = FALSE)
 
     message("Extraction completed successfully for ", state_name)
