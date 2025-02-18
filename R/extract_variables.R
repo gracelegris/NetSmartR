@@ -1,17 +1,76 @@
-# ==========================================================================================================================================
-## Script Name: Extract Variables
-# Author: Grace Legris, Research Data Analyst
-# Date: 01/21/25
-# Purpose: Extracts EVI, NDVI, rainfall, distance to water bodies, relative humidity, temperature, housing quality,
-# PFPR (Plasmodium Falciparum Parasite Rate), night time light, flood, NDWI (Normalized Difference Water Index),
-# NDMI (Normalized Difference Moisture Index), elevation, surface soil wetness (or any combination of these variables)
-# from any given Nigeria state shapefile and saves as .csv.
-# ==========================================================================================================================================
-
+#' Extract Raster Data for a Given State
+#'
+#' This function extracts a variety of environmental and health-related variables from
+#' raster datasets for a specified Nigerian state. Variables include EVI, NDVI, rainfall,
+#' distance to water bodies, relative humidity, temperature, housing quality, PFPR,
+#' night-time lights, flood, NDWI, NDMI, elevation, and surface soil wetness.
+#'
+#' @param state_name Character. The name of the state for which data is being extracted.
+#' @param shapefile_path Character. The file path to the state shapefile containing ward boundaries.
+#' @param raster_paths List. A named list of file paths to the raster datasets. Expected names include:
+#' \describe{
+#'   \item{evi_path}{Path to folder containing EVI GeoTIFF files.}
+#'   \item{ndvi_path}{Path to folder containing NDVI GeoTIFF files.}
+#'   \item{rainfall_path}{Path to folder containing rainfall GeoTIFF files.}
+#'   \item{h2o_distance_path}{File path to the distance-to-water bodies GeoTIFF.}
+#'   \item{rh_2023}{File path to the 2023 relative humidity raster data (brick).}
+#'   \item{rh_2024}{File path to the 2024 relative humidity raster data (brick).}
+#'   \item{temp_2023}{File path to the 2023 temperature raster data (brick).}
+#'   \item{temp_2024}{File path to the 2024 temperature raster data (brick).}
+#'   \item{housing_quality_path}{File path to the housing quality GeoTIFF.}
+#'   \item{pfpr_path}{File path to the PfPR GeoTIFF.}
+#'   \item{lights_path}{Path to folder containing night-time light GeoTIFF files.}
+#'   \item{flood_path}{Path to folder containing flood GeoTIFF files.}
+#'   \item{ndwi_path}{File path to the NDWI GeoTIFF.}
+#'   \item{ndmi_path}{File path to the NDMI GeoTIFF.}
+#'   \item{elevation_path}{File path to the elevation GeoTIFF.}
+#'   \item{surface_soil_wetness_path}{Path to folder containing surface soil wetness GeoTIFF files.}
+#'   \item{output_dir}{Directory where the output CSV should be saved.}
+#' }
+#'
+#' @details
+#' This function first validates and cleans the provided shapefile and then proceeds to
+#' extract values from each provided raster dataset based on the spatial boundaries of wards.
+#' Each extraction uses a mean function to compute an average value per ward. The results
+#' are then merged with the spatial data and finally exported as a CSV file.
+#'
+#' @return A data frame containing the extracted variables for each ward.
+#'
+#' @examples
+#' \dontrun{
+#' # Define raster paths
+#' raster_paths <- list(
+#'   evi_path = "path/to/evi/",
+#'   ndvi_path = "path/to/ndvi/",
+#'   rainfall_path = "path/to/rainfall/",
+#'   h2o_distance_path = "path/to/distance_to_water.tif",
+#'   rh_2023 = "path/to/rh_2023.tif",
+#'   rh_2024 = "path/to/rh_2024.tif",
+#'   temp_2023 = "path/to/temp_2023.tif",
+#'   temp_2024 = "path/to/temp_2024.tif",
+#'   housing_quality_path = "path/to/housing_quality.tif",
+#'   pfpr_path = "path/to/pfpr.tif",
+#'   lights_path = "path/to/night_lights/",
+#'   flood_path = "path/to/flood/",
+#'   ndwi_path = "path/to/ndwi.tif",
+#'   ndmi_path = "path/to/ndmi.tif",
+#'   elevation_path = "path/to/elevation.tif",
+#'   surface_soil_wetness_path = "path/to/soil_wetness/",
+#'   output_dir = "path/to/output/"
+#' )
+#'
+#' # Run extraction for Kano state
+#' output_variables <- extract_raster_data(
+#'   state_name = "Kano",
+#'   shapefile_path = "path/to/Kano_State.shp",
+#'   raster_paths = raster_paths
+#' )
+#' }
+#'
+#' @export
 extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
 
-  # Start timer
-  tic(paste("Starting extract_variables for", state_name))
+  message("Starting extract_variables for ", state_name)
 
   tryCatch({
     # Load shapefile
@@ -236,11 +295,7 @@ extract_raster_data <- function(state_name, shapefile_path, raster_paths) {
     message("Extraction completed successfully for ", state_name)
     return(output_variables)
 
-    # End timer and display total elapsed time
-    toc(log = TRUE)
-
   }, error = function(e) {
-    toc(log = TRUE)
     message("An error occurred while processing ", state_name, ": ", e$message)
     NULL
   })

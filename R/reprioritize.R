@@ -5,6 +5,55 @@
 # Purpose: Creates and saves final reprioritization maps using composite scores.
 # ==========================================================================================================================================
 
+#' Prioritize Wards Based on Population and Ranking
+#'
+#' This function selects wards for reprioritization based on their population and malaria risk ranking.
+#' Wards are added sequentially (skipping those classified as "Rural" or with missing classification)
+#' until the cumulative population of selected wards reaches or exceeds the specified target percentage.
+#'
+#' @param data A data frame containing ward-level data. It must include:
+#'   \itemize{
+#'     \item A population column (specified by \code{population_col}).
+#'     \item A ranking column (specified by \code{rank_col}).
+#'     \item A classification column (specified by \code{class_col}) indicating urban/rural status.
+#'     \item A ward identifier column (specified by \code{ward_col}).
+#'   }
+#' @param population_col A character string specifying the name of the population column in \code{data}.
+#' @param rank_col A character string specifying the name of the ranking column in \code{data}.
+#' @param class_col A character string specifying the name of the classification column (e.g., urban/rural) in \code{data}.
+#' @param ward_col A character string specifying the name of the ward identifier column in \code{data}.
+#' @param target_percentage A numeric value (default is 30) representing the target percentage of the total population
+#'   that the selected wards should cumulatively cover.
+#'
+#' @return A data frame containing:
+#'   \itemize{
+#'     \item \code{SelectedWards}: The names/identifiers of the selected wards.
+#'     \item \code{WardCode}: The ward codes (if available).
+#'     \item \code{WardPopulation}: The population for each selected ward.
+#'     \item \code{WardPercentage}: The percentage of the total population represented by each ward.
+#'     \item \code{CumulativePopulation}: The cumulative population sum of the selected wards.
+#'     \item \code{CumulativePercentage}: The cumulative population percentage relative to the total population.
+#'   }
+#'
+#' @details The function first filters out rows with missing population or ranking values and sorts the data
+#' based on the ranking. It then iteratively adds wards (skipping those with missing or "Rural" classification)
+#' until the cumulative population of the selected wards meets or exceeds the \code{target_percentage}.
+#'
+#' @examples
+#' \dontrun{
+#' # Assuming combined_data is a data frame with the required columns:
+#' prioritized <- prioritize_wards(
+#'   data = combined_data,
+#'   population_col = "Population",
+#'   rank_col = "rank",
+#'   class_col = "classification_30",
+#'   ward_col = "WardName",
+#'   target_percentage = 30
+#' )
+#' print(prioritized)
+#' }
+#'
+#' @export
 prioritize_wards <- function(data, population_col, rank_col, class_col, ward_col, target_percentage = 30) {
   total_population <- sum(data[[population_col]], na.rm = TRUE)
 
@@ -54,12 +103,96 @@ prioritize_wards <- function(data, population_col, rank_col, class_col, ward_col
   return(result)
 }
 
+
+#' Merge Test Positivity Rate Data with Extracted Data
+#'
+#' This function reads a CSV file containing malaria test positivity rate (TPR) data and merges it with the
+#' extracted covariate data based on the ward name.
+#'
+#' @param tpr_data_path A character string specifying the file path to the TPR data CSV.
+#' @param extracted_data A data frame containing extracted covariate data. This data frame must include a column
+#'   named \code{WardName} that will be used to merge with the TPR data.
+#'
+#' @return A data frame resulting from a left join of \code{extracted_data} with the selected TPR column
+#'   (\code{u5_tpr_rdt}) from the TPR data.
+#'
+#' @details The function selects only the \code{WardName} and \code{u5_tpr_rdt} columns from the TPR data
+#' and performs a left join with \code{extracted_data} based on the \code{WardName} column.
+#'
+#' @examples
+#' \dontrun{
+#' merged_data <- merge("path/to/tpr_data.csv", extracted_data)
+#' head(merged_data)
+#' }
+#'
+#' @import dplyr
+#' @export
 merge <- function(tpr_data_path, extracted_data) {
   tpr_data <- read.csv(tpr_data_path)
   extracted_data_plus <- extracted_data %>%
     left_join(tpr_data %>% dplyr::select(WardName, u5_tpr_rdt), by = "WardName")
 }
 
+
+#' Create and Save Reprioritization Maps Using Composite Scores
+#'
+#' This function creates final reprioritization maps for a given state by combining spatial data,
+#' extracted covariate data, ITN distribution data, and ranked ward information. It generates a risk map
+#' based on composite scores as well as reprioritization maps under multiple urban classification scenarios.
+#'
+#' @param state_name A character string representing the name of the state.
+#' @param shp_dir A character string specifying the file path to the state's shapefile.
+#' @param output_dir A character string specifying the directory where the output maps will be saved.
+#' @param itn_dir A character string specifying the file path to the ITN distribution data CSV.
+#' @param extracted_data_dir A character string specifying the file path to the CSV containing extracted covariate data.
+#' @param ranked_wards A data frame containing ward ranking information. This should include at least the ward name and ranking.
+#'
+#' @return A list containing:
+#'   \itemize{
+#'     \item \code{risk_map}: A ggplot object representing the malaria risk map.
+#'     \item \code{reprioritization_map}: A ggplot grob (grid object) combining multiple reprioritization maps.
+#'   }
+#'
+#' @details The function performs the following steps:
+#' \enumerate{
+#'   \item Loads the state's shapefile and extracted covariate data.
+#'   \item Creates urban/rural classification scenarios based on varying urban percentage thresholds (20%, 30%, 50%, and 75%).
+#'   \item Reads and processes ITN distribution data to obtain ward populations.
+#'   \item Merges the covariate, ranking, and ITN data to form a comprehensive dataset.
+#'   \item Runs the \code{prioritize_wards} function for each urban classification scenario to determine which wards
+#'         are reprioritized.
+#'   \item Generates a risk map (using composite scores) and four reprioritization maps (one for each urban scenario)
+#'         using \code{ggplot2} and a custom map theme (\code{map_theme}).
+#'   \item Arranges the reprioritization maps into a grid and adds a title.
+#' }
+#'
+#' @note This function relies on external data files and an active internet connection to download spatial data
+#'   (if needed). It also assumes that the custom function \code{map_theme()} is defined in the package.
+#'
+#' @examples
+#' \dontrun{
+#' result_maps <- create_reprioritization_map(
+#'   state_name = "Kano",
+#'   shp_dir = "path/to/state_shapefile.geojson",
+#'   output_dir = "path/to/output_directory",
+#'   itn_dir = "path/to/itn_data.csv",
+#'   extracted_data_dir = "path/to/extracted_data.csv",
+#'   ranked_wards = ranked_data
+#' )
+#'
+#' # To view the risk map:
+#' print(result_maps$risk_map)
+#'
+#' # To view the reprioritization map grid:
+#' grid::grid.draw(result_maps$reprioritization_map)
+#' }
+#'
+#' @import dplyr
+#' @import ggplot2
+#' @import gridExtra
+#' @import grid
+#' @importFrom sf st_read
+#' @export
 create_reprioritization_map <- function(state_name, shp_dir, output_dir, itn_dir, extracted_data_dir, ranked_wards) {
 
   # load shapefile, extracted covariates data, and ranked wards df

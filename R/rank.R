@@ -5,6 +5,63 @@
 # Purpose: Calculates malaria risk rankings for each ward based on the composite risk scores from each model (different combinations of variables)
 # ==========================================================================================================================================
 
+#' Calculate Malaria Risk Rankings from Composite Scores
+#'
+#' This function calculates malaria risk rankings for each ward based on composite risk scores
+#' derived from different models (combinations of risk factor variables). It computes an overall
+#' composite score for each ward, normalizes the score, categorizes it, and assigns a rank.
+#'
+#' @param composite_score_data A data frame containing composite risk scores for each ward. This data frame
+#'   should include:
+#'   \itemize{
+#'     \item \code{WardName}: The name of the ward.
+#'     \item \code{WardCode}: The code identifying the ward.
+#'     \item One or more columns with names starting with \code{"model_"} that represent composite risk scores
+#'           from different models.
+#'     \item \code{Urban} (optional): The urban classification for each ward.
+#'   }
+#'
+#' @return A data frame containing the following columns:
+#'   \itemize{
+#'     \item \code{WardName} and \code{WardCode}: Identifiers for each ward.
+#'     \item \code{composite_score}: The overall composite score calculated as the mean of the model scores.
+#'     \item \code{new_value}: The normalized composite score scaled between 0 and 1.
+#'     \item \code{class}: A categorical variable that divides the normalized score into intervals (bins).
+#'     \item \code{rank}: The ranking of wards based on their composite scores.
+#'     \item \code{wardname_rank}: A combined string of the ward name and its rank.
+#'     \item \code{Urban}: The urban classification of the ward (if available).
+#'     \item \code{flag_not_ideal}: A logical flag indicating whether a ward is non-urban (\code{Urban == "No"})
+#'           and ranks within the top 5, suggesting it may be less ideal for certain interventions.
+#'   }
+#'
+#' @details The function executes the following steps:
+#' \enumerate{
+#'   \item \strong{Extract Urban Classification:} It extracts urban classification information (if available)
+#'         from the input data.
+#'   \item \strong{Reshape Data:} The function reshapes the data from wide to long format to consolidate all
+#'         model score columns.
+#'   \item \strong{Composite Score Calculation:} It computes an overall composite score for each ward by taking
+#'         the mean of all model scores.
+#'   \item \strong{Normalization and Categorization:} The composite scores are normalized to a 0-1 scale and
+#'         then binned into categories using a 0.2 interval.
+#'   \item \strong{Ranking:} Wards are ranked based on their composite scores.
+#'   \item \strong{Merging Data:} The urban classification is merged back with the computed rankings.
+#'   \item \strong{Flagging:} Wards that are non-urban and have a top-5 rank are flagged as not ideal.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Example usage:
+#' # Assume composite_score_data is a data frame with columns "WardName", "WardCode",
+#' # one or more "model_*" columns, and optionally an "Urban" column.
+#'
+#' ranked_data <- rank(composite_score_data)
+#' head(ranked_data)
+#' }
+#'
+#' @import dplyr
+#' @import reshape2
+#' @export
 rank <- function(composite_score_data) {
   # extract the urban classification for each ward
   urban_data <- composite_score_data %>% dplyr::select(WardName, Urban, WardCode)

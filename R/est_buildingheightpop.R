@@ -5,6 +5,97 @@
 # Purpose: Calculates number of households per building and population estimates based on building height.
 # ==========================================================================================================================================
 
+#' Estimate Building Heights, Household Counts, and Population
+#'
+#' This function calculates the number of households per building and provides population estimates
+#' based on building height data. It reads spatial data for settlement blocks, building footprints,
+#' and a ward boundary shapefile, then uses a building height raster to estimate the number of stories
+#' (and thereby households) per building. Population estimates are generated based on multiple household
+#' size scenarios.
+#'
+#' @param building_data_path A character string specifying the file path to the building footprints dataset.
+#'   The dataset should be readable by the \code{sf} package.
+#' @param settlement_data_path A character string specifying the file path to the settlement blocks dataset.
+#'   This dataset is expected to contain a \code{state} column and a \code{landuse} column.
+#' @param ward_shapefile_path A character string specifying the file path to the ward boundary shapefile.
+#' @param height_raster_path A character string specifying the file path to the raster dataset containing building heights.
+#' @param output_dir A character string specifying the directory where any output files (e.g., CSVs) may be saved.
+#' @param urban_wards A character vector of ward names that are classified as urban.
+#' @param part_urban_wards A character vector of ward names that are classified as partially urban.
+#' @param low_risk_wards A character vector of ward names that are considered low risk.
+#' @param ward A character string indicating the ward being processed (used for messaging).
+#' @param state A character string indicating the state being processed (used for filtering and messaging).
+#'
+#' @return This function returns a ggplot2 object (\code{p1}) representing a bar plot of population estimates
+#'   by different household size scenarios. The plot shows the estimated population per ward group, along with labels
+#'   indicating both the absolute population and its percentage contribution.
+#'
+#' @details The function performs the following steps:
+#' \enumerate{
+#'   \item \strong{Data Loading and Preprocessing:}
+#'     \itemize{
+#'       \item Reads settlement blocks, building footprints, and the ward shapefile, and transforms all data to EPSG:4326.
+#'       \item Filters settlement blocks for the specified state and only retains those with \code{landuse} equal to "Residential".
+#'       \item Ensures geometries are valid; any invalid geometries are removed with a warning.
+#'     }
+#'   \item \strong{Spatial Joins:}
+#'     \itemize{
+#'       \item Performs a spatial join to assign building footprints to the settlement blocks.
+#'       \item Joins ward information (i.e., \code{WardName}) from the ward shapefile to the residential buildings.
+#'     }
+#'   \item \strong{Building Height Extraction:}
+#'     \itemize{
+#'       \item Loads a building height raster and extracts both the mean height for the ward and individual building heights
+#'             using \code{raster::extract} and \code{exactextractr::exact_extract}.
+#'       \item Adds the calculated mean building height to each residential building.
+#'     }
+#'   \item \strong{Household and Population Estimation:}
+#'     \itemize{
+#'       \item Filters buildings to remove uninhabitable structures (e.g., buildings shorter than 1.8 m or taller than 14 m).
+#'       \item Estimates the number of households per building based on building height thresholds:
+#'             - 1.8 m to <3.5 m: 1 household
+#'             - 3.5 m to <7.0 m: 1.5 households
+#'             - 7.0 m to <10.5 m: 2 households
+#'             - 10.5 m to <14.0 m: 2.5 households
+#'       \item Aggregates household counts at the ward level and computes population estimates using various multipliers
+#'             (e.g., 3, 4, or 5 persons per household) and an "uneven" estimate that varies by ward type.
+#'       \item Groups wards into categories based on risk (using the provided \code{low_risk_wards}) for comparison.
+#'     }
+#'   \item \strong{Visualization:}
+#'     \itemize{
+#'       \item Creates a bar plot using \code{ggplot2} to display population estimates per ward group.
+#'       \item The plot is styled using a custom manuscript theme (\code{theme_manuscript}).
+#'     }
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Example usage:
+#' plot_result <- est_buildingheightpop(
+#'   building_data_path = "path/to/building_data.geojson",
+#'   settlement_data_path = "path/to/settlement_blocks.geojson",
+#'   ward_shapefile_path = "path/to/ward_shapefile.shp",
+#'   height_raster_path = "path/to/height_raster.tif",
+#'   output_dir = "path/to/output_directory",
+#'   urban_wards = c("WardA", "WardB"),
+#'   part_urban_wards = c("WardC"),
+#'   low_risk_wards = c("WardD"),
+#'   ward = "ExampleWard",
+#'   state = "ExampleState"
+#' )
+#'
+#' # To display the plot:
+#' print(plot_result)
+#' }
+#'
+#' @import sf
+#' @import dplyr
+#' @import raster
+#' @import exactextractr
+#' @import ggplot2
+#' @import tidyr
+#' @importFrom stats filter
+#' @export
 est_buildingheightpop <- function(building_data_path, settlement_data_path, ward_shapefile_path, height_raster_path, output_dir, urban_wards,
                                   part_urban_wards, low_risk_wards, ward, state) {
 

@@ -5,6 +5,32 @@
 # Purpose: Calculates counts of residential buildings within a given shapefile and population estimates based on user-specified household sizes.
 # ==========================================================================================================================================
 
+#' Manuscript Map Theme
+#'
+#' This function creates and returns a ggplot2 theme suitable for manuscript-style figures.
+#' The theme includes a white background, black borders, and adjusted text sizes and colors for improved clarity.
+#'
+#' @return A ggplot2 theme object that can be applied to ggplot figures.
+#'
+#' @details The theme sets:
+#' \itemize{
+#'   \item A white background with a black panel border.
+#'   \item Centered plot titles.
+#'   \item Axis text and titles with specified sizes and colors.
+#'   \item Customized legend text and key dimensions.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' library(ggplot2)
+#' p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+#'   geom_point() +
+#'   theme_manuscript() +
+#'   labs(title = "Manuscript Style Plot")
+#' print(p)
+#' }
+#'
+#' @export
 theme_manuscript <- function(){
   theme_bw() +
     theme(panel.border = element_rect(colour = "black", fill=NA, size=0.5),
@@ -18,6 +44,70 @@ theme_manuscript <- function(){
           legend.key.height = unit(1, "cm"))
 }
 
+#' Estimate Residential Building Counts and Population
+#'
+#' This function calculates the number of residential buildings and estimates the population within a study area.
+#' It reads spatial data for building footprints, settlement blocks, and the study area, filters the settlement blocks
+#' based on a specified land use type, and then performs spatial joins to count the total and residential buildings.
+#' Population estimates are derived by multiplying the number of residential buildings by a user-specified household size.
+#'
+#' @param building_data_path A character string specifying the file path to the building footprints dataset (supported by \code{sf}).
+#' @param settlement_data_path A character string specifying the file path to the settlement blocks dataset (supported by \code{sf}).
+#' @param shapefile_path A character string specifying the file path to the study area shapefile (supported by \code{sf}).
+#' @param household_size A numeric value representing the average household size, used to estimate the population.
+#' @param city A character string representing the name of the city (used for labeling output messages).
+#' @param state A character string representing the state name (used for filtering settlement blocks and labeling).
+#' @param landuse_filter A character string specifying the land use type to filter the settlement blocks (e.g., "Residential").
+#'
+#' @return A list containing:
+#'   \itemize{
+#'     \item \code{building_counts}: A data frame with the following columns:
+#'       \itemize{
+#'         \item \code{WardName}: Name of the ward.
+#'         \item \code{total_buildings}: Total number of distinct building footprints within the ward.
+#'         \item \code{residential_buildings}: Count of residential buildings (filtered by the specified land use).
+#'         \item \code{population_estimate}: Estimated population for the ward (residential buildings multiplied by \code{household_size}).
+#'       }
+#'     \item \code{total_population}: A numeric value representing the overall population estimate for the study area.
+#'   }
+#'
+#' @details The function performs the following steps:
+#' \enumerate{
+#'   \item Reads the settlement blocks, study area, and building footprints using the \code{sf} package.
+#'   \item Validates and, if necessary, fixes invalid geometries in the settlement blocks.
+#'   \item Filters the settlement blocks for the specified state and land use type. If no valid \code{landuse_filter}
+#'         is provided, the function stops with an error listing the available land use types.
+#'   \item Transforms all spatial data to EPSG:4326.
+#'   \item Joins the building footprints with the study area to determine which buildings fall within the study area.
+#'   \item Counts the total number of buildings and, via a further spatial join with the filtered settlement blocks,
+#'         counts the number of residential buildings.
+#'   \item Estimates the population for each ward by multiplying the number of residential buildings by the provided
+#'         \code{household_size}, and calculates the overall population.
+#'   \item Outputs a summary table and messages with the total counts and population estimates.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' result <- est_buildingpop(
+#'   building_data_path = "path/to/buildings.geojson",
+#'   settlement_data_path = "path/to/settlement_blocks.geojson",
+#'   shapefile_path = "path/to/study_area.shp",
+#'   household_size = 5,
+#'   city = "Example City",
+#'   state = "Example State",
+#'   landuse_filter = "Residential"
+#' )
+#'
+#' # View building counts and estimated total population
+#' print(result$building_counts)
+#' print(result$total_population)
+#' }
+#'
+#' @import sf
+#' @import dplyr
+#' @importFrom tidyr replace_na
+#' @import knitr
+#' @export
 est_buildingpop <- function(building_data_path, settlement_data_path, shapefile_path, household_size, city, state, landuse_filter) {
 
   # read in settlement blocks data

@@ -23,26 +23,67 @@ map_theme <- function(){
         legend.key.height = unit(0.65, "cm"))
 }
 
-# # function to match state code to state name
-# get_state_name <- function(state_code) {
-#   state_code_to_name <- c(
-#     "AB" = "Abia", "AD" = "Adamawa", "AK" = "Akwa Ibom", "AN" = "Anambra", "BA" = "Bauchi", "BY" = "Bayelsa", "BE" = "Benue",
-#     "BR" = "Borno", "CR" = "Cross River", "DE" = "Delta", "EB" = "Ebonyi", "ED" = "Edo", "EK" = "Ekiti", "EN" = "Enugu", "GO" = "Gombe",
-#     "IM" = "Imo", "JI" = "Jigawa", "KD" = "Kaduna", "KN" = "Kano", "KT" = "Katsina", "KB" = "Kebbi", "KO" = "Kogi", "KW" = "Kwara",
-#     "LA" = "Lagos", "NA" = "Nasarawa", "NI" = "Niger", "OG" = "Ogun", "ON" = "Ondo", "OS" = "Osun", "OY" = "Oyo", "PL" = "Plateau",
-#     "RI" = "Rivers", "SO" = "Sokoto", "TA" = "Taraba", "YO" = "Yobe", "ZA" = "Zamfara", "FC" = "Federal Capital Territory"
-#   )
-#   if (state_code %in% names(state_code_to_name)) {
-#     return(state_code_to_name[state_code])
-#   } else {
-#     stop("ERROR: Invalid state code. Please check the input.")
-#   }
-# }
-
 # ==========================================================================================================================================
 ## Function to load the shapefile and plot the map for a specified state, ward, or LGA (using name or code)
 # ==========================================================================================================================================
 
+#' Generate a Map for a Specified Area
+#'
+#' This function downloads a shapefile from Google Drive containing boundaries for Nigerian states, wards, or LGAs,
+#' filters the data based on user-specified criteria (state code, state name, ward codes, ward names, LGA codes, or LGA names),
+#' and generates a map of the selected area. The map is then saved as a PDF file in the specified output directory.
+#'
+#' @param map_name A character string representing the name of the map. This name is used in the map title and the output file name.
+#' @param state_code A character string specifying the state code. Only one of \code{state_code} or \code{state_name} should be provided.
+#' @param state_name A character string specifying the state name. Only one of \code{state_code} or \code{state_name} should be provided.
+#' @param ward_codes A character vector specifying one or more ward codes. Only one of \code{ward_codes} or \code{ward_names} should be provided.
+#' @param ward_names A character vector specifying one or more ward names. Only one of \code{ward_codes} or \code{ward_names} should be provided.
+#' @param lga_codes A character vector specifying one or more Local Government Area (LGA) codes. If specified, neither \code{ward_codes} nor \code{ward_names} should be provided.
+#' @param lga_names A character vector specifying one or more Local Government Area (LGA) names. If specified, neither \code{ward_codes} nor \code{ward_names} should be provided.
+#' @param output_dir A character string specifying the directory where the output PDF map will be saved.
+#'
+#' @return Invisibly returns \code{NULL}. The function primarily generates and saves a PDF file containing the map.
+#'
+#' @details The function operates in several steps:
+#' \enumerate{
+#'   \item \strong{Input Validation:} Ensures that mutually exclusive parameters (e.g., \code{state_code} vs. \code{state_name} or \code{ward_codes} vs. \code{ward_names}) are not both provided.
+#'   \item \strong{Downloading Shapefiles:} Based on the specified parameters, the function downloads the appropriate shapefile from Google Drive using a provided URL.
+#'   \item \strong{Filtering Data:} The downloaded shapefile is filtered to retain only the geometries matching the specified state, ward, or LGA.
+#'   \item \strong{Map Generation:} A map is created using \code{ggplot2} with a custom theme defined by the \code{map_theme} function.
+#'   \item \strong{Saving the Map:} The map is saved as a PDF file in the \code{output_dir}, with a filename that incorporates \code{map_name} and the type of area.
+#' }
+#'
+#' @note The function relies on an active internet connection to download shapefiles from Google Drive and uses temporary files to store the downloaded data.
+#'
+#' @examples
+#' \dontrun{
+#' # Example: Generate a map for a state using its code
+#' generate_map(
+#'   map_name = "Kano_Map",
+#'   state_code = "KN",
+#'   output_dir = "path/to/output/directory"
+#' )
+#'
+#' # Example: Generate a map for specific wards using ward codes
+#' generate_map(
+#'   map_name = "Wards_Map",
+#'   ward_codes = c("W001", "W002", "W003"),
+#'   output_dir = "path/to/output/directory"
+#' )
+#'
+#' # Example: Generate a map for a specific LGA using its name
+#' generate_map(
+#'   map_name = "LGA_Map",
+#'   lga_names = c("LGA1"),
+#'   output_dir = "path/to/output/directory"
+#' )
+#' }
+#'
+#' @import dplyr
+#' @import ggplot2
+#' @import sf
+#' @export
+#'
 generate_map <- function(map_name = NULL, state_code = NULL, state_name = NULL, ward_codes = NULL, ward_names = NULL, lga_codes = NULL, lga_names = NULL, output_dir) {
   ## -------------------------------------------------------------------------
   ### Validate inputs
